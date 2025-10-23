@@ -1,0 +1,8 @@
+---
+alwaysApply: true
+---
+
+Project info:
+Skyrim SKSE AE Plugin Development
+Using CommonLibSSE-NG: search in local files for functions/headers if necessary
+never try to run build
