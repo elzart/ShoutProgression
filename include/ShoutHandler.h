@@ -14,7 +14,8 @@ public:
     RE::BSEventNotifyControl ProcessEvent(const RE::ShoutAttack::Event* a_event, RE::BSTEventSource<RE::ShoutAttack::Event>*) override;
 
     // Helper methods
-    float CalculateRangeMultiplier(int playerLevel);
+    float CalculateDistanceMultiplier(int dragonSouls);
+    float CalculateMagnitudeMultiplier(int dragonSouls);
 
 private:
     ShoutHandler() = default;

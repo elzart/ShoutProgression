@@ -1,30 +1,37 @@
 # Shout Progression
 
-A Skyrim SKSE plugin that adds progression to shout mechanics by scaling shout distance based on player level.
+A Skyrim SKSE plugin that adds progression to shout mechanics by scaling shout distance and power based on dragon souls absorbed.
 
 ## Description
 
-In vanilla Skyrim, shout mechanics are limited to discovering new words and shouts. This plugin introduces a dynamic progression element that makes shouts more exciting and rewarding as you level up.
+In vanilla Skyrim, shout mechanics are limited to discovering new words and shouts. This plugin introduces a dynamic progression element that makes shouts more exciting and rewarding as you absorb dragon souls.
 
 **Key Features:**
-- **Progressive Shout Distance**: At lower levels, your shouts reach shorter distances. At higher levels, they can exceed standard distances by multiple times.
-- **Fully Customizable**: Configure the scaling through a simple INI file with an easy-to-understand linear formula.
+- **Progressive Shout Distance**: As you absorb more dragon souls, your shouts travel faster and reach farther distances.
+- **Progressive Shout Magnitude**: Dragon souls increase your shout power, damage, and effect strength.
+- **Dragon Soul Based**: Progression tied to dragon souls absorbed, making dragon hunting more meaningful.
+- **Fully Customizable**: Configure the scaling through a simple INI file with separate multipliers for distance and magnitude.
 - **Lightweight**: Minimal performance impact, only processes shout events.
 
 ## How It Works
 
-The plugin uses a linear interpolation formula to calculate a range multiplier based on your current level:
+The plugin uses a simple additive formula to calculate multipliers based on dragon souls absorbed:
 
 ```
-multiplier = MinMultiplier + (MaxMultiplier - MinMultiplier) × (currentLevel / maxLevel)
-finalRange = baseRange × multiplier
+Modified Value = Base Value × (1.0 + min(Dragon Souls, Max) × Multiplier)
 ```
+
+**Separate scaling for:**
+- **Distance**: Affects projectile speed and range (default: 0.15 per soul)
+- **Magnitude**: Affects damage, power, and effect strength (default: 0.10 per soul)
 
 **Example with default settings:**
-- Level 1: 0.5× range (50% of base)
-- Level 20: ~0.97× range (97% of base)
-- Level 41: ~1.5× range (150% of base)
-- Level 81: 2.0× range (200% of base)
+- 0 souls: 1.0× distance, 1.0× magnitude (base values)
+- 5 souls: 1.75× distance, 1.5× magnitude
+- 10 souls: 2.5× distance, 2.0× magnitude
+- 25 souls (cap): 4.75× distance, 3.5× magnitude
+
+This means a Fus Ro Dah with 10 dragon souls will travel 2.5× faster/farther and have 2.0× the force!
 
 ## Installation
 
@@ -38,14 +45,17 @@ Edit `Data/SKSE/Plugins/ShoutProgression.ini` to customize the behavior:
 
 ```ini
 [ShoutProgression]
-; Minimum range multiplier at level 1
-fMinMultiplier = 0.5
+; Distance scaling multiplier per dragon soul
+; Default: 0.15 (increases projectile speed and range)
+fDistanceMultiplier = 0.15
 
-; Maximum range multiplier at max level
-fMaxMultiplier = 2.0
+; Magnitude scaling multiplier per dragon soul
+; Default: 0.10 (increases shout power/damage/effect strength)
+fMagnitudeMultiplier = 0.10
 
-; Maximum level for scaling
-iMaxLevel = 81
+; Maximum dragon souls for scaling cap
+; Default: 25
+iMaxDragonSouls = 25
 
 [General]
 ; Enable detailed debug logging
@@ -54,19 +64,25 @@ bEnableDebugLogging = false
 
 ### Configuration Options
 
-- **fMinMultiplier**: Range multiplier at level 1 (default: 0.5)
-  - Set to 1.0 for no penalty at low levels
-  - Set lower for more dramatic progression
+- **fDistanceMultiplier**: Distance scaling per dragon soul (default: 0.15)
+  - Controls how much faster/farther shout projectiles travel
+  - Set to 0.20 for more dramatic distance scaling
+  - Set to 0.0 to disable distance scaling
   
-- **fMaxMultiplier**: Range multiplier at maximum level (default: 2.0)
-  - Set to 3.0 or higher for longer ranges at max level
-  - Set to 1.0 to disable progression entirely
+- **fMagnitudeMultiplier**: Magnitude scaling per dragon soul (default: 0.10)
+  - Controls how much stronger shout effects become
+  - Affects damage, push force, slow time percentage, etc.
+  - Set to 0.15 for more powerful effects
+  - Set to 0.0 to disable magnitude scaling
   
-- **iMaxLevel**: Maximum level for scaling calculations (default: 81)
-  - Increase if using mods that uncap the level system
+- **iMaxDragonSouls**: Maximum dragon souls for scaling (default: 25)
+  - Caps scaling to prevent excessive power with high soul counts
+  - Increase for longer progression curve
+  - Main quest provides ~15-20 dragon souls
   
 - **bEnableDebugLogging**: Enable detailed logging (default: false)
-  - Set to true to see shout range calculations in the log file
+  - Set to true to see dragon souls and multiplier calculations in the log
+  - Shows actual magnitude and distance changes per shout
   - Log file location: `Documents/My Games/Skyrim Special Edition/SKSE/ShoutProgression.log`
 
 ## Compatibility

@@ -27,17 +27,17 @@ void Config::LoadFromINI() {
     SKSE::log::info("Loading configuration from {}", configPath.string());
 
     // Shout Progression Settings
-    fMinMultiplier = static_cast<float>(ini.GetDoubleValue("ShoutProgression", "fMinMultiplier", fMinMultiplier));
-    fMaxMultiplier = static_cast<float>(ini.GetDoubleValue("ShoutProgression", "fMaxMultiplier", fMaxMultiplier));
-    iMaxLevel = static_cast<int>(ini.GetLongValue("ShoutProgression", "iMaxLevel", iMaxLevel));
+    fDistanceMultiplier = static_cast<float>(ini.GetDoubleValue("ShoutProgression", "fDistanceMultiplier", fDistanceMultiplier));
+    fMagnitudeMultiplier = static_cast<float>(ini.GetDoubleValue("ShoutProgression", "fMagnitudeMultiplier", fMagnitudeMultiplier));
+    iMaxDragonSouls = static_cast<int>(ini.GetLongValue("ShoutProgression", "iMaxDragonSouls", iMaxDragonSouls));
 
     // Debug Settings
     bEnableDebugLogging = ini.GetBoolValue("General", "bEnableDebugLogging", bEnableDebugLogging);
 
     SKSE::log::info("Configuration loaded:");
-    SKSE::log::info("  fMinMultiplier: {}", fMinMultiplier);
-    SKSE::log::info("  fMaxMultiplier: {}", fMaxMultiplier);
-    SKSE::log::info("  iMaxLevel: {}", iMaxLevel);
+    SKSE::log::info("  fDistanceMultiplier: {}", fDistanceMultiplier);
+    SKSE::log::info("  fMagnitudeMultiplier: {}", fMagnitudeMultiplier);
+    SKSE::log::info("  iMaxDragonSouls: {}", iMaxDragonSouls);
     SKSE::log::info("  bEnableDebugLogging: {}", bEnableDebugLogging);
 }
 

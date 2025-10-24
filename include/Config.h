@@ -6,10 +6,10 @@
 // Shout Progression Configuration
 // ============================================
 struct Config {
-    // Shout distance scaling
-    float fMinMultiplier = 0.5f;   // Multiplier at level 1
-    float fMaxMultiplier = 2.0f;   // Multiplier at max level
-    int iMaxLevel = 81;            // Maximum level for scaling
+    // Shout scaling multipliers
+    float fDistanceMultiplier = 0.15f;   // Distance scaling per dragon soul
+    float fMagnitudeMultiplier = 0.10f;  // Magnitude scaling per dragon soul
+    int iMaxDragonSouls = 25;            // Maximum dragon souls for scaling cap
 
     // Debug settings
     bool bEnableDebugLogging = false;
