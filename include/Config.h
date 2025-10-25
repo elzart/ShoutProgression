@@ -7,9 +7,10 @@
 // ============================================
 struct Config {
     // Shout scaling multipliers
-    float fDistanceMultiplier = 0.15f;   // Distance scaling per dragon soul
-    float fMagnitudeMultiplier = 0.10f;  // Magnitude scaling per dragon soul
-    int iMaxDragonSouls = 25;            // Maximum dragon souls for scaling cap
+    float fDistanceMultiplier = 0.04f;   // Distance scaling per dragon soul
+    float fMagnitudeMultiplier = 0.03f;  // Magnitude scaling per dragon soul
+    int iMaxDragonSouls = 50;            // Maximum dragon souls for scaling cap
+    bool bCountSpentSouls = true;        // Count souls spent on unlocking shout words
 
     // Debug settings
     bool bEnableDebugLogging = false;

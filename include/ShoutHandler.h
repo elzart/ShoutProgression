@@ -16,6 +16,7 @@ public:
     // Helper methods
     float CalculateDistanceMultiplier(int dragonSouls);
     float CalculateMagnitudeMultiplier(int dragonSouls);
+    int CountUnlockedShoutWords(RE::PlayerCharacter* player);
 
 private:
     ShoutHandler() = default;

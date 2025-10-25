@@ -40,16 +40,21 @@ RE::BSEventNotifyControl ShoutHandler::ProcessEvent(const RE::ShoutAttack::Event
     }
 
     // NOTE: ShoutAttack::Event only fires for player shouts, not NPCs
-    // Get dragon souls absorbed
-    int dragonSouls = static_cast<int>(player->AsActorValueOwner()->GetActorValue(RE::ActorValue::kDragonSouls));
+    
+    // Get dragon souls for scaling
+    int unspentSouls = static_cast<int>(player->AsActorValueOwner()->GetActorValue(RE::ActorValue::kDragonSouls));
+    int spentSouls = config->bCountSpentSouls ? CountUnlockedShoutWords(player) : 0;
+    int totalSouls = unspentSouls + spentSouls;
     
     // Calculate separate multipliers for distance and magnitude
-    float distanceMultiplier = CalculateDistanceMultiplier(dragonSouls);
-    float magnitudeMultiplier = CalculateMagnitudeMultiplier(dragonSouls);
+    float distanceMultiplier = CalculateDistanceMultiplier(totalSouls);
+    float magnitudeMultiplier = CalculateMagnitudeMultiplier(totalSouls);
 
     if (config->bEnableDebugLogging) {
         SKSE::log::info("Shout detected: {}", a_event->shout->GetName());
-        SKSE::log::info("  Dragon Souls: {}", dragonSouls);
+        SKSE::log::info("  Unspent Souls: {}", unspentSouls);
+        SKSE::log::info("  Spent Souls (unlocked words): {}", spentSouls);
+        SKSE::log::info("  Total Souls: {}", totalSouls);
         SKSE::log::info("  Distance Multiplier: {}", distanceMultiplier);
         SKSE::log::info("  Magnitude Multiplier: {}", magnitudeMultiplier);
     }
@@ -155,5 +160,34 @@ float ShoutHandler::CalculateMagnitudeMultiplier(int dragonSouls) {
     float multiplier = 1.0f + (static_cast<float>(clampedSouls) * config->fMagnitudeMultiplier);
     
     return multiplier;
+}
+
+int ShoutHandler::CountUnlockedShoutWords(RE::PlayerCharacter* player) {
+    if (!player) {
+        return 0;
+    }
+
+    int unlockedWords = 0;
+    
+    // Get all shouts in the game
+    auto* dataHandler = RE::TESDataHandler::GetSingleton();
+    if (!dataHandler) {
+        return 0;
+    }
+
+    // Iterate through all shouts
+    for (auto& shout : dataHandler->GetFormArray<RE::TESShout>()) {
+        if (shout && player->HasShout(shout)) {
+            // Check each of the 3 word variations
+            for (int i = 0; i < 3; i++) {
+                auto* word = shout->variations[i].word;
+                if (word && word->GetKnown()) {
+                    unlockedWords++;
+                }
+            }
+        }
+    }
+
+    return unlockedWords;
 }
 

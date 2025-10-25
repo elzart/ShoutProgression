@@ -30,6 +30,7 @@ void Config::LoadFromINI() {
     fDistanceMultiplier = static_cast<float>(ini.GetDoubleValue("ShoutProgression", "fDistanceMultiplier", fDistanceMultiplier));
     fMagnitudeMultiplier = static_cast<float>(ini.GetDoubleValue("ShoutProgression", "fMagnitudeMultiplier", fMagnitudeMultiplier));
     iMaxDragonSouls = static_cast<int>(ini.GetLongValue("ShoutProgression", "iMaxDragonSouls", iMaxDragonSouls));
+    bCountSpentSouls = ini.GetBoolValue("ShoutProgression", "bCountSpentSouls", bCountSpentSouls);
 
     // Debug Settings
     bEnableDebugLogging = ini.GetBoolValue("General", "bEnableDebugLogging", bEnableDebugLogging);
@@ -38,6 +39,7 @@ void Config::LoadFromINI() {
     SKSE::log::info("  fDistanceMultiplier: {}", fDistanceMultiplier);
     SKSE::log::info("  fMagnitudeMultiplier: {}", fMagnitudeMultiplier);
     SKSE::log::info("  iMaxDragonSouls: {}", iMaxDragonSouls);
+    SKSE::log::info("  bCountSpentSouls: {}", bCountSpentSouls);
     SKSE::log::info("  bEnableDebugLogging: {}", bEnableDebugLogging);
 }
 
