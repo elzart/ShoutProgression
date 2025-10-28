@@ -64,22 +64,38 @@ bEnableDebugLogging = false
 
 ### Configuration Options
 
-- **fDistanceMultiplier**: Distance scaling per dragon soul (default: 0.15)
-  - Controls how much faster/farther shout projectiles travel
-  - Set to 0.20 for more dramatic distance scaling
+- **fDistanceMultiplier**: Distance scaling per dragon soul (default: 0.04)
+  - Controls how much faster/farther shout projectiles travel per soul absorbed
   - Set to 0.0 to disable distance scaling
-  
-- **fMagnitudeMultiplier**: Magnitude scaling per dragon soul (default: 0.10)
-  - Controls how much stronger shout effects become
-  - Affects damage, push force, slow time percentage, etc.
-  - Set to 0.15 for more powerful effects
+
+- **fMagnitudeMultiplier**: Magnitude scaling per dragon soul (default: 0.03)
+  - Controls how much stronger shout effects become per soul absorbed
+  - Affects damage, push force, duration, etc.
   - Set to 0.0 to disable magnitude scaling
-  
-- **iMaxDragonSouls**: Maximum dragon souls for scaling (default: 25)
-  - Caps scaling to prevent excessive power with high soul counts
+  - **Note**: Slow Time shout uses inverse scaling (divides instead of multiplies) so it gets slower with more souls
+
+- **fMinDistanceMultiplier**: Starting distance multiplier at 0 souls (default: 1.0)
+  - Sets the base power for shout range/speed at the start of the game
+  - Set to 1.0 for 100% of vanilla power (no penalty at start)
+  - Set lower (e.g., 0.5) to make shouts start weaker and scale up with souls
+  - Example: 0.5 = 50% range at 0 souls, scaling to 250% at 50 souls (0.5 + 50×0.04)
+
+- **fMinMagnitudeMultiplier**: Starting magnitude multiplier at 0 souls (default: 1.0)
+  - Sets the base power for shout damage/effects at the start of the game
+  - Set to 1.0 for 100% of vanilla power (no penalty at start)
+  - Set lower (e.g., 0.5) to make shouts start weaker and scale up with souls
+  - Example: 0.5 = 50% power at 0 souls, scaling to 200% at 50 souls (0.5 + 50×0.03)
+
+- **iMaxDragonSouls**: Maximum dragon souls for scaling (default: 50)
+  - Caps scaling to prevent excessive power with very high soul counts
   - Increase for longer progression curve
   - Main quest provides ~15-20 dragon souls
-  
+
+- **bCountSpentSouls**: Toggle between total absorbed souls or only unspent souls (default: true)
+  - Set to true to track total souls absorbed (spent + unspent)
+  - Set to false to only track current unspent dragon souls
+  - With false, you choose between powerful shouts or unlocking new words
+
 - **bEnableDebugLogging**: Enable detailed logging (default: false)
   - Set to true to see dragon souls and multiplier calculations in the log
   - Shows actual magnitude and distance changes per shout

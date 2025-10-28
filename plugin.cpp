@@ -51,13 +51,13 @@ void OnSKSEMessage(SKSE::MessagingInterface::Message* message) {
             SKSE::log::info("Debug logging enabled");
         }
 
-        // Register shout event handler
-        auto* shoutEventSource = RE::ShoutAttack::GetEventSource();
-        if (shoutEventSource) {
-            shoutEventSource->AddEventSink(ShoutHandler::GetSingleton());
-            SKSE::log::info("Shout event handler registered successfully");
+        // Register action event handler (for shouts)
+        auto* actionEventSource = SKSE::GetActionEventSource();
+        if (actionEventSource) {
+            actionEventSource->AddEventSink(ShoutHandler::GetSingleton());
+            SKSE::log::info("Action event handler registered successfully");
         } else {
-            SKSE::log::error("Failed to get ShoutAttack event source");
+            SKSE::log::error("Failed to get ActionEvent event source");
         }
 
         SKSE::log::info("Shout Progression plugin initialized successfully");

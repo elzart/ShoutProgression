@@ -27,19 +27,34 @@ ShoutHandler* ShoutHandler::GetSingleton() {
     return &singleton;
 }
 
-RE::BSEventNotifyControl ShoutHandler::ProcessEvent(const RE::ShoutAttack::Event* a_event, RE::BSTEventSource<RE::ShoutAttack::Event>*) {
-    if (!a_event || !a_event->shout) {
+RE::BSEventNotifyControl ShoutHandler::ProcessEvent(const SKSE::ActionEvent* a_event, RE::BSTEventSource<SKSE::ActionEvent>*) {
+    if (!a_event) {
+        return RE::BSEventNotifyControl::kContinue;
+    }
+
+    // Only handle voice cast/fire events (shouts)
+    if (a_event->type != SKSE::ActionEvent::Type::kVoiceCast && 
+        a_event->type != SKSE::ActionEvent::Type::kVoiceFire) {
         return RE::BSEventNotifyControl::kContinue;
     }
 
     auto* config = Config::GetSingleton();
     auto* player = RE::PlayerCharacter::GetSingleton();
     
-    if (!player) {
+    if (!player || !a_event->actor) {
         return RE::BSEventNotifyControl::kContinue;
     }
 
-    // NOTE: ShoutAttack::Event only fires for player shouts, not NPCs
+    // CRITICAL: Only modify if the PLAYER is shouting, not NPCs!
+    if (a_event->actor->formID != player->formID) {
+        return RE::BSEventNotifyControl::kContinue;
+    }
+
+    // Get the shout from the event
+    auto* shout = a_event->sourceForm ? a_event->sourceForm->As<RE::TESShout>() : nullptr;
+    if (!shout) {
+        return RE::BSEventNotifyControl::kContinue;
+    }
     
     // Get dragon souls for scaling
     int unspentSouls = static_cast<int>(player->AsActorValueOwner()->GetActorValue(RE::ActorValue::kDragonSouls));
@@ -51,7 +66,7 @@ RE::BSEventNotifyControl ShoutHandler::ProcessEvent(const RE::ShoutAttack::Event
     float magnitudeMultiplier = CalculateMagnitudeMultiplier(totalSouls);
 
     if (config->bEnableDebugLogging) {
-        SKSE::log::info("Shout detected: {}", a_event->shout->GetName());
+        SKSE::log::info("Player shout detected: {}", shout->GetName());
         SKSE::log::info("  Unspent Souls: {}", unspentSouls);
         SKSE::log::info("  Spent Souls (unlocked words): {}", spentSouls);
         SKSE::log::info("  Total Souls: {}", totalSouls);
@@ -63,7 +78,7 @@ RE::BSEventNotifyControl ShoutHandler::ProcessEvent(const RE::ShoutAttack::Event
     int effectsModified = 0;
     
     for (int i = 0; i < 3; i++) {
-        auto& variation = a_event->shout->variations[i];
+        auto& variation = shout->variations[i];
         if (variation.spell) {
             for (auto* effect : variation.spell->effects) {
                 if (effect && effect->baseEffect) {
@@ -85,7 +100,20 @@ RE::BSEventNotifyControl ShoutHandler::ProcessEvent(const RE::ShoutAttack::Event
                         std::lock_guard<std::mutex> lock(g_effectsMutex);
                         original = g_originalEffects[effect];
                     }
-                    effect->effectItem.magnitude = original.originalMagnitude * magnitudeMultiplier;
+
+                    // Special handling for Slow Time shout
+                    // Slow Time magnitude is a time scale multiplier (e.g., 0.3 = 30% speed)
+                    // LOWER values = slower time, so we need to DIVIDE instead of multiply
+                    bool isSlowTime = effect->baseEffect->HasArchetype(RE::EffectArchetypes::ArchetypeID::kSlowTime);
+
+                    if (isSlowTime) {
+                        // For slow time: divide by multiplier to make time slower
+                        // This makes the time scale smaller (slower) with more souls
+                        effect->effectItem.magnitude = original.originalMagnitude / magnitudeMultiplier;
+                    } else {
+                        // For all other effects: multiply normally to increase power
+                        effect->effectItem.magnitude = original.originalMagnitude * magnitudeMultiplier;
+                    }
                     
                     effectsModified++;
 
@@ -113,17 +141,19 @@ RE::BSEventNotifyControl ShoutHandler::ProcessEvent(const RE::ShoutAttack::Event
                         projectile->data.range = origProj.originalRange * distanceMultiplier;
                         
                         if (config->bEnableDebugLogging) {
-                            SKSE::log::info("  Effect #{}: mag {} -> {}, proj speed {} -> {}, range {} -> {}",
+                            SKSE::log::info("  Effect #{}: mag {} -> {}, proj speed {} -> {}, range {} -> {} {}",
                                 i + 1,
                                 original.originalMagnitude, effect->effectItem.magnitude,
                                 origProj.originalSpeed, projectile->data.speed,
-                                origProj.originalRange, projectile->data.range);
+                                origProj.originalRange, projectile->data.range,
+                                isSlowTime ? "(SlowTime - inverted)" : "");
                         }
                     } else {
                         if (config->bEnableDebugLogging) {
-                            SKSE::log::info("  Effect #{}: mag {} -> {} (no projectile)",
+                            SKSE::log::info("  Effect #{}: mag {} -> {} (no projectile){}",
                                 i + 1,
-                                original.originalMagnitude, effect->effectItem.magnitude);
+                                original.originalMagnitude, effect->effectItem.magnitude,
+                                isSlowTime ? " (SlowTime - inverted)" : "");
                         }
                     }
                 }
@@ -135,30 +165,39 @@ RE::BSEventNotifyControl ShoutHandler::ProcessEvent(const RE::ShoutAttack::Event
         SKSE::log::info("  Total effects modified: {}", effectsModified);
     }
 
+    // NOTE: We do NOT restore values here because:
+    // 1. We always recalculate from stored originals each cast
+    // 2. Values update dynamically as player's soul count changes
+    // 3. NPCs will use current values, but they update with each player shout
+
     return RE::BSEventNotifyControl::kContinue;
 }
 
 float ShoutHandler::CalculateDistanceMultiplier(int dragonSouls) {
     auto* config = Config::GetSingleton();
-    
+
     // Clamp dragon souls to max
     int clampedSouls = std::min(dragonSouls, config->iMaxDragonSouls);
-    
-    // Formula: Base * (1.0 + DragonSouls * Multiplier)
-    float multiplier = 1.0f + (static_cast<float>(clampedSouls) * config->fDistanceMultiplier);
-    
+
+    // Formula: MinMultiplier + (DragonSouls * Multiplier)
+    // This allows shouts to start weaker (if fMinDistanceMultiplier < 1.0)
+    // Example: fMinDistanceMultiplier=0.5, at 0 souls = 50% power, scales up from there
+    float multiplier = config->fMinDistanceMultiplier + (static_cast<float>(clampedSouls) * config->fDistanceMultiplier);
+
     return multiplier;
 }
 
 float ShoutHandler::CalculateMagnitudeMultiplier(int dragonSouls) {
     auto* config = Config::GetSingleton();
-    
+
     // Clamp dragon souls to max
     int clampedSouls = std::min(dragonSouls, config->iMaxDragonSouls);
-    
-    // Formula: Base * (1.0 + DragonSouls * Multiplier)
-    float multiplier = 1.0f + (static_cast<float>(clampedSouls) * config->fMagnitudeMultiplier);
-    
+
+    // Formula: MinMultiplier + (DragonSouls * Multiplier)
+    // This allows shouts to start weaker (if fMinMagnitudeMultiplier < 1.0)
+    // Example: fMinMagnitudeMultiplier=0.5, at 0 souls = 50% power, scales up from there
+    float multiplier = config->fMinMagnitudeMultiplier + (static_cast<float>(clampedSouls) * config->fMagnitudeMultiplier);
+
     return multiplier;
 }
 
@@ -190,4 +229,5 @@ int ShoutHandler::CountUnlockedShoutWords(RE::PlayerCharacter* player) {
 
     return unlockedWords;
 }
+
 

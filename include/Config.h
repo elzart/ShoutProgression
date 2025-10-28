@@ -12,6 +12,10 @@ struct Config {
     int iMaxDragonSouls = 50;            // Maximum dragon souls for scaling cap
     bool bCountSpentSouls = true;        // Count souls spent on unlocking shout words
 
+    // Minimum multiplier settings (allows shouts to be weaker at low soul counts)
+    float fMinDistanceMultiplier = 1.0f; // Minimum distance multiplier at 0 souls (1.0 = 100% power)
+    float fMinMagnitudeMultiplier = 1.0f; // Minimum magnitude multiplier at 0 souls (1.0 = 100% power)
+
     // Debug settings
     bool bEnableDebugLogging = false;
 
