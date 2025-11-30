@@ -17,14 +17,32 @@ void Config::LoadFromINI() {
     CSimpleIniA ini;
     ini.SetUnicode();
 
-    auto configPath = std::filesystem::path("Data") / "SKSE" / "Plugins" / "ShoutProgression.ini";
+    // Try loading from MCM settings (user settings) first
+    auto mcmUserPath = std::filesystem::path("Data") / "MCM" / "Settings" / "ShoutProgression - MCM.ini";
+    auto mcmDefaultPath = std::filesystem::path("Data") / "MCM" / "Config" / "ShoutProgression - MCM" / "settings.ini";
+    auto legacyPath = std::filesystem::path("Data") / "SKSE" / "Plugins" / "ShoutProgression.ini";
 
-    if (ini.LoadFile(configPath.string().c_str()) < 0) {
-        SKSE::log::info("INI file not found at {}, using default values", configPath.string());
+    std::filesystem::path configPath;
+
+    // Priority: MCM user settings > MCM defaults > Legacy SKSE plugin INI
+    if (std::filesystem::exists(mcmUserPath)) {
+        configPath = mcmUserPath;
+        SKSE::log::info("Loading configuration from MCM user settings: {}", configPath.string());
+    } else if (std::filesystem::exists(mcmDefaultPath)) {
+        configPath = mcmDefaultPath;
+        SKSE::log::info("Loading configuration from MCM defaults: {}", configPath.string());
+    } else if (std::filesystem::exists(legacyPath)) {
+        configPath = legacyPath;
+        SKSE::log::info("Loading configuration from legacy INI: {}", configPath.string());
+    } else {
+        SKSE::log::info("No configuration file found, using default values");
         return;
     }
 
-    SKSE::log::info("Loading configuration from {}", configPath.string());
+    if (ini.LoadFile(configPath.string().c_str()) < 0) {
+        SKSE::log::warn("Failed to load configuration from {}, using default values", configPath.string());
+        return;
+    }
 
     // Shout Progression Settings
     fDistanceMultiplier = static_cast<float>(ini.GetDoubleValue("ShoutProgression", "fDistanceMultiplier", fDistanceMultiplier));

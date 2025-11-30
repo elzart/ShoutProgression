@@ -1,0 +1,142 @@
+{
+	"modName": "Shout Progression - MCM",
+	"displayName": "Shout Progression",
+	"minMcmVersion": 13,
+	"content": [],
+	"pages": [
+		{
+			"pageDisplayName": "Scaling Settings",
+			"content": [
+				{
+					"text": "Distance Scaling",
+					"type": "header"
+				},
+				{
+					"text": "Distance Multiplier Per Soul",
+					"type": "slider",
+					"id": "fDistanceMultiplier:ShoutProgression",
+					"valueOptions": {
+						"sourceType": "ModSettingFloat",
+						"defaultValue": 0.04,
+						"min": 0.0,
+						"max": 0.20,
+						"step": 0.01,
+						"formatString": "{2}"
+					},
+					"help": "Distance scaling per dragon soul (affects projectile speed and range). Default: 0.04"
+				},
+				{
+					"text": "Minimum Distance Multiplier",
+					"type": "slider",
+					"id": "fMinDistanceMultiplier:ShoutProgression",
+					"valueOptions": {
+						"sourceType": "ModSettingFloat",
+						"defaultValue": 1.0,
+						"min": 0.0,
+						"max": 2.0,
+						"step": 0.05,
+						"formatString": "{2}"
+					},
+					"help": "Starting distance multiplier at 0 souls (1.0 = 100% vanilla power). Set lower to make shouts start weaker."
+				},
+				{
+					"type": "empty"
+				},
+				{
+					"type": "empty"
+				},
+				{
+					"type": "empty"
+				},
+				{
+					"text": "Magnitude Scaling",
+					"type": "header"
+				},
+				{
+					"text": "Magnitude Multiplier Per Soul",
+					"type": "slider",
+					"id": "fMagnitudeMultiplier:ShoutProgression",
+					"valueOptions": {
+						"sourceType": "ModSettingFloat",
+						"defaultValue": 0.03,
+						"min": 0.0,
+						"max": 0.20,
+						"step": 0.01,
+						"formatString": "{2}"
+					},
+					"help": "Magnitude scaling per dragon soul (affects damage, power, effect strength). Default: 0.03"
+				},
+				{
+					"text": "Minimum Magnitude Multiplier",
+					"type": "slider",
+					"id": "fMinMagnitudeMultiplier:ShoutProgression",
+					"valueOptions": {
+						"sourceType": "ModSettingFloat",
+						"defaultValue": 1.0,
+						"min": 0.0,
+						"max": 2.0,
+						"step": 0.05,
+						"formatString": "{2}"
+					},
+					"help": "Starting magnitude multiplier at 0 souls (1.0 = 100% vanilla power). Set lower to make shouts start weaker."
+				}
+			]
+		},
+		{
+			"pageDisplayName": "General Settings",
+			"content": [
+				{
+					"text": "Dragon Soul Configuration",
+					"type": "header"
+				},
+				{
+					"text": "Maximum Dragon Souls",
+					"type": "slider",
+					"id": "iMaxDragonSouls:ShoutProgression",
+					"valueOptions": {
+						"sourceType": "ModSettingInt",
+						"defaultValue": 50,
+						"min": 0,
+						"max": 100,
+						"step": 1,
+						"formatString": "{0}"
+					},
+					"help": "Maximum dragon souls for scaling cap. Default: 50"
+				},
+				{
+					"text": "Count Spent Souls",
+					"type": "toggle",
+					"id": "bCountSpentSouls:ShoutProgression",
+					"valueOptions": {
+						"sourceType": "ModSettingBool",
+						"defaultValue": true
+					},
+					"help": "Track total souls absorbed (spent + unspent) instead of only unspent souls. Default: Enabled"
+				},
+				{
+					"type": "empty"
+				},
+				{
+					"type": "empty"
+				},
+				{
+					"type": "empty"
+				},
+				{
+					"text": "Debug Settings",
+					"type": "header"
+				},
+				{
+					"text": "Enable Debug Logging",
+					"type": "toggle",
+					"id": "bEnableDebugLogging:General",
+					"valueOptions": {
+						"sourceType": "ModSettingBool",
+						"defaultValue": false
+					},
+					"help": "Enable detailed debug logging to SKSE log file. Default: Disabled"
+				}
+			]
+		}
+	]
+}
