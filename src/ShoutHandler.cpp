@@ -56,9 +56,12 @@ RE::BSEventNotifyControl ShoutHandler::ProcessEvent(const SKSE::ActionEvent* a_e
         return RE::BSEventNotifyControl::kContinue;
     }
     
+    // Update soul tracking before calculating multipliers
+    UpdateSoulTracking(player);
+    
     // Get dragon souls for scaling
     int unspentSouls = static_cast<int>(player->AsActorValueOwner()->GetActorValue(RE::ActorValue::kDragonSouls));
-    int spentSouls = config->bCountSpentSouls ? CountUnlockedShoutWords(player) : 0;
+    int spentSouls = config->bCountSpentSouls ? GetSpentSoulCount(player) : 0;
     int totalSouls = unspentSouls + spentSouls;
     
     // Calculate separate multipliers for distance and magnitude
@@ -201,6 +204,48 @@ float ShoutHandler::CalculateMagnitudeMultiplier(int dragonSouls) {
     return multiplier;
 }
 
+void ShoutHandler::UpdateSoulTracking(RE::PlayerCharacter* player) {
+    if (!player) {
+        return;
+    }
+
+    auto currentSouls = static_cast<std::uint32_t>(player->AsActorValueOwner()->GetActorValue(RE::ActorValue::kDragonSouls));
+
+    // Initialize on first run
+    if (!m_isInitialized) {
+        // Count currently unlocked words (one-time calibration)
+        int unlockedWords = CountUnlockedShoutWords(player);
+        m_totalSoulsEverEarned = currentSouls + unlockedWords;
+        m_lastKnownSoulCount = currentSouls;
+        m_isInitialized = true;
+        
+        SKSE::log::info("Soul tracking initialized: {} total souls earned ({} current + {} spent)", 
+            m_totalSoulsEverEarned, currentSouls, unlockedWords);
+        return;
+    }
+
+    // If souls increased, add the difference to total earned
+    if (currentSouls > m_lastKnownSoulCount) {
+        std::uint32_t gained = currentSouls - m_lastKnownSoulCount;
+        m_totalSoulsEverEarned += gained;
+        
+        SKSE::log::info("Dragon souls gained: {} (total earned: {})", gained, m_totalSoulsEverEarned);
+    }
+
+    m_lastKnownSoulCount = currentSouls;
+}
+
+int ShoutHandler::GetSpentSoulCount(RE::PlayerCharacter* player) {
+    if (!player || !m_isInitialized) {
+        return 0;
+    }
+
+    auto currentSouls = static_cast<std::uint32_t>(player->AsActorValueOwner()->GetActorValue(RE::ActorValue::kDragonSouls));
+    
+    // Spent souls = total earned - current souls
+    return static_cast<int>(m_totalSoulsEverEarned - currentSouls);
+}
+
 int ShoutHandler::CountUnlockedShoutWords(RE::PlayerCharacter* player) {
     if (!player) {
         return 0;
@@ -215,6 +260,7 @@ int ShoutHandler::CountUnlockedShoutWords(RE::PlayerCharacter* player) {
     }
 
     // Iterate through all shouts
+    // NOTE: This is only used for initial calibration, not during normal gameplay
     for (auto& shout : dataHandler->GetFormArray<RE::TESShout>()) {
         if (shout && player->HasShout(shout)) {
             // Check each of the 3 word variations
@@ -228,6 +274,93 @@ int ShoutHandler::CountUnlockedShoutWords(RE::PlayerCharacter* player) {
     }
 
     return unlockedWords;
+}
+
+// ============================================
+// Serialization Callbacks
+// ============================================
+
+void ShoutHandler::OnGameSaved(SKSE::SerializationInterface* a_intfc) {
+    auto* handler = GetSingleton();
+    
+    // Write version
+    constexpr std::uint32_t kVersion = 1;
+    if (!a_intfc->WriteRecordData(kVersion)) {
+        SKSE::log::error("Failed to write serialization version");
+        return;
+    }
+
+    // Write tracking data
+    if (!a_intfc->WriteRecordData(handler->m_totalSoulsEverEarned)) {
+        SKSE::log::error("Failed to write totalSoulsEverEarned");
+        return;
+    }
+
+    if (!a_intfc->WriteRecordData(handler->m_lastKnownSoulCount)) {
+        SKSE::log::error("Failed to write lastKnownSoulCount");
+        return;
+    }
+
+    if (!a_intfc->WriteRecordData(handler->m_isInitialized)) {
+        SKSE::log::error("Failed to write isInitialized");
+        return;
+    }
+
+    SKSE::log::info("Saved soul tracking data: {} total earned, {} current, initialized: {}", 
+        handler->m_totalSoulsEverEarned, handler->m_lastKnownSoulCount, handler->m_isInitialized);
+}
+
+void ShoutHandler::OnGameLoaded(SKSE::SerializationInterface* a_intfc) {
+    auto* handler = GetSingleton();
+    
+    std::uint32_t type;
+    std::uint32_t version;
+    std::uint32_t length;
+
+    while (a_intfc->GetNextRecordInfo(type, version, length)) {
+        if (version != 1) {
+            SKSE::log::error("Unknown serialization version: {}", version);
+            continue;
+        }
+
+        // Read tracking data
+        std::uint32_t totalSoulsEverEarned;
+        std::uint32_t lastKnownSoulCount;
+        bool isInitialized;
+
+        if (!a_intfc->ReadRecordData(totalSoulsEverEarned)) {
+            SKSE::log::error("Failed to read totalSoulsEverEarned");
+            continue;
+        }
+
+        if (!a_intfc->ReadRecordData(lastKnownSoulCount)) {
+            SKSE::log::error("Failed to read lastKnownSoulCount");
+            continue;
+        }
+
+        if (!a_intfc->ReadRecordData(isInitialized)) {
+            SKSE::log::error("Failed to read isInitialized");
+            continue;
+        }
+
+        handler->m_totalSoulsEverEarned = totalSoulsEverEarned;
+        handler->m_lastKnownSoulCount = lastKnownSoulCount;
+        handler->m_isInitialized = isInitialized;
+
+        SKSE::log::info("Loaded soul tracking data: {} total earned, {} current, initialized: {}", 
+            handler->m_totalSoulsEverEarned, handler->m_lastKnownSoulCount, handler->m_isInitialized);
+    }
+}
+
+void ShoutHandler::OnRevert(SKSE::SerializationInterface*) {
+    auto* handler = GetSingleton();
+    
+    // Reset to defaults (new game or save load failure)
+    handler->m_totalSoulsEverEarned = 0;
+    handler->m_lastKnownSoulCount = 0;
+    handler->m_isInitialized = false;
+
+    SKSE::log::info("Soul tracking data reverted to defaults");
 }
 
 

@@ -4,7 +4,7 @@
 #include <SKSE/SKSE.h>
 
 // ============================================
-// Shout Event Handler
+// Shout Event Handler with Serialization
 // ============================================
 class ShoutHandler : public RE::BSTEventSink<SKSE::ActionEvent> {
 public:
@@ -16,7 +16,12 @@ public:
     // Helper methods
     float CalculateDistanceMultiplier(int dragonSouls);
     float CalculateMagnitudeMultiplier(int dragonSouls);
-    int CountUnlockedShoutWords(RE::PlayerCharacter* player);
+    int GetSpentSoulCount(RE::PlayerCharacter* player);
+    
+    // Serialization callbacks
+    static void OnGameSaved(SKSE::SerializationInterface* a_intfc);
+    static void OnGameLoaded(SKSE::SerializationInterface* a_intfc);
+    static void OnRevert(SKSE::SerializationInterface* a_intfc);
 
 private:
     ShoutHandler() = default;
@@ -26,6 +31,15 @@ private:
 
     ShoutHandler& operator=(const ShoutHandler&) = delete;
     ShoutHandler& operator=(ShoutHandler&&) = delete;
+
+    // Soul tracking methods
+    void UpdateSoulTracking(RE::PlayerCharacter* player);
+    int CountUnlockedShoutWords(RE::PlayerCharacter* player); // Used only for initial calibration
+
+    // Serialization data
+    std::uint32_t m_totalSoulsEverEarned = 0;
+    std::uint32_t m_lastKnownSoulCount = 0;
+    bool m_isInitialized = false;
 };
 
 

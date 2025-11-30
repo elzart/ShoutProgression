@@ -77,6 +77,19 @@ SKSEPluginLoad(const SKSE::LoadInterface* skse) {
     SKSE::log::info("{} {} is loading...", plugin->GetName(), version);
     SKSE::Init(skse);
 
+    // Register serialization callbacks
+    auto* serialization = SKSE::GetSerializationInterface();
+    if (serialization) {
+        serialization->SetUniqueID('SHTP'); // Unique ID for ShoutProgression
+        serialization->SetSaveCallback(ShoutHandler::OnGameSaved);
+        serialization->SetLoadCallback(ShoutHandler::OnGameLoaded);
+        serialization->SetRevertCallback(ShoutHandler::OnRevert);
+        SKSE::log::info("Registered serialization callbacks");
+    } else {
+        SKSE::log::error("Failed to get serialization interface");
+        return false;
+    }
+
     // Register for SKSE messages
     auto* messaging = SKSE::GetMessagingInterface();
     if (messaging) {

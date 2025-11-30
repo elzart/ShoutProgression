@@ -95,11 +95,36 @@ bEnableDebugLogging = false
   - Set to true to track total souls absorbed (spent + unspent)
   - Set to false to only track current unspent dragon souls
   - With false, you choose between powerful shouts or unlocking new words
+  - **Note**: Uses SKSE serialization to accurately track souls spent on unlocking words
 
 - **bEnableDebugLogging**: Enable detailed logging (default: false)
   - Set to true to see dragon souls and multiplier calculations in the log
   - Shows actual magnitude and distance changes per shout
   - Log file location: `Documents/My Games/Skyrim Special Edition/SKSE/ShoutProgression.log`
+
+## Important Notes
+
+### Initial Calibration for Existing Saves
+
+When first installing this mod on an **existing save**, the initial spent soul count may be slightly inaccurate. This happens because:
+
+- The mod counts **discovered** shout words (found at word walls) for initial calibration
+- However, it cannot distinguish between words that are **discovered but not unlocked** (greyed out) vs **discovered and unlocked** (soul spent)
+- Both types return the same result when queried through the game engine
+
+**This only affects the very first calculation** when the mod initializes on an existing save. **All future soul tracking is 100% accurate** as the mod monitors actual soul gains and spending in real-time.
+
+**For most accurate results on existing saves:**
+1. Note your current dragon soul count before installing
+2. Count your actual unlocked shout words (not greyed out ones)
+3. Use console command: `player.setav dragonsouls [total_souls_ever_earned]`
+4. Where `total_souls_ever_earned = current_souls + actually_unlocked_words`
+
+**Example:** If you have 5 current souls and have unlocked 8 words total, use:
+```
+player.setav dragonsouls 13
+```
+Then let the mod recalibrate on next shout use.
 
 ## Compatibility
 
