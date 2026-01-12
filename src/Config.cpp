@@ -17,14 +17,12 @@ void Config::LoadFromINI() {
     CSimpleIniA ini;
     ini.SetUnicode();
 
-    // Try loading from MCM settings (user settings) first
     auto mcmUserPath = std::filesystem::path("Data") / "MCM" / "Settings" / "ShoutProgression - MCM.ini";
     auto mcmDefaultPath = std::filesystem::path("Data") / "MCM" / "Config" / "ShoutProgression - MCM" / "settings.ini";
     auto legacyPath = std::filesystem::path("Data") / "SKSE" / "Plugins" / "ShoutProgression.ini";
 
     std::filesystem::path configPath;
 
-    // Priority: MCM user settings > MCM defaults > Legacy SKSE plugin INI
     if (std::filesystem::exists(mcmUserPath)) {
         configPath = mcmUserPath;
         SKSE::log::info("Loading configuration from MCM user settings: {}", configPath.string());
@@ -44,17 +42,14 @@ void Config::LoadFromINI() {
         return;
     }
 
-    // Shout Progression Settings
     fDistanceMultiplier = static_cast<float>(ini.GetDoubleValue("ShoutProgression", "fDistanceMultiplier", fDistanceMultiplier));
     fMagnitudeMultiplier = static_cast<float>(ini.GetDoubleValue("ShoutProgression", "fMagnitudeMultiplier", fMagnitudeMultiplier));
     iMaxDragonSouls = static_cast<int>(ini.GetLongValue("ShoutProgression", "iMaxDragonSouls", iMaxDragonSouls));
     bCountSpentSouls = ini.GetBoolValue("ShoutProgression", "bCountSpentSouls", bCountSpentSouls);
 
-    // Minimum Multiplier Settings
     fMinDistanceMultiplier = static_cast<float>(ini.GetDoubleValue("ShoutProgression", "fMinDistanceMultiplier", fMinDistanceMultiplier));
     fMinMagnitudeMultiplier = static_cast<float>(ini.GetDoubleValue("ShoutProgression", "fMinMagnitudeMultiplier", fMinMagnitudeMultiplier));
 
-    // Debug Settings
     bEnableDebugLogging = ini.GetBoolValue("General", "bEnableDebugLogging", bEnableDebugLogging);
 
     SKSE::log::info("Configuration loaded:");

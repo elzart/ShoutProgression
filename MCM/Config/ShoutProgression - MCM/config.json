@@ -109,32 +109,9 @@
 					"id": "bCountSpentSouls:ShoutProgression",
 					"valueOptions": {
 						"sourceType": "ModSettingBool",
-						"defaultValue": true
-					},
-					"help": "Track total souls absorbed (spent + unspent) instead of only unspent souls. Default: Enabled"
-				},
-				{
-					"type": "empty"
-				},
-				{
-					"type": "empty"
-				},
-				{
-					"type": "empty"
-				},
-				{
-					"text": "Debug Settings",
-					"type": "header"
-				},
-				{
-					"text": "Enable Debug Logging",
-					"type": "toggle",
-					"id": "bEnableDebugLogging:General",
-					"valueOptions": {
-						"sourceType": "ModSettingBool",
 						"defaultValue": false
 					},
-					"help": "Enable detailed debug logging to SKSE log file. Default: Disabled"
+					"help": "Track total souls absorbed (spent + unspent) instead of only unspent souls. Default: Disabled"
 				}
 			]
 		}

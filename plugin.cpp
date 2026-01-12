@@ -7,9 +7,6 @@
 
 using namespace std::literals;
 
-// ============================================
-// Plugin Declaration
-// ============================================
 SKSEPluginInfo(
     .Version = { 1, 0, 0, 0 },
     .Name = "ShoutProgression"sv,
@@ -19,9 +16,6 @@ SKSEPluginInfo(
     .RuntimeCompatibility = SKSE::VersionIndependence::AddressLibrary
 )
 
-// ============================================
-// Setup Logging
-// ============================================
 void SetupLog() {
     auto logsFolder = SKSE::log::log_directory();
     if (!logsFolder) SKSE::stl::report_and_fail("SKSE log_directory not provided, logs disabled.");
@@ -34,24 +28,18 @@ void SetupLog() {
     spdlog::flush_on(spdlog::level::info);
 }
 
-// ============================================
-// SKSE Message Handler
-// ============================================
 void OnSKSEMessage(SKSE::MessagingInterface::Message* message) {
     if (message->type == SKSE::MessagingInterface::kDataLoaded) {
         SKSE::log::info("Data loaded, registering event handlers...");
-        
-        // Load configuration
+
         auto* config = Config::GetSingleton();
         config->LoadFromINI();
 
-        // Set log level based on config
         if (config->bEnableDebugLogging) {
             spdlog::set_level(spdlog::level::debug);
             SKSE::log::info("Debug logging enabled");
         }
 
-        // Register action event handler (for shouts)
         auto* actionEventSource = SKSE::GetActionEventSource();
         if (actionEventSource) {
             actionEventSource->AddEventSink(ShoutHandler::GetSingleton());
@@ -64,10 +52,6 @@ void OnSKSEMessage(SKSE::MessagingInterface::Message* message) {
     }
 }
 
-
-// ============================================
-// Plugin Entry Point
-// ============================================
 SKSEPluginLoad(const SKSE::LoadInterface* skse) {
     SetupLog();
 
@@ -77,7 +61,6 @@ SKSEPluginLoad(const SKSE::LoadInterface* skse) {
     SKSE::log::info("{} {} is loading...", plugin->GetName(), version);
     SKSE::Init(skse);
 
-    // Register for SKSE messages
     auto* messaging = SKSE::GetMessagingInterface();
     if (messaging) {
         messaging->RegisterListener(OnSKSEMessage);
