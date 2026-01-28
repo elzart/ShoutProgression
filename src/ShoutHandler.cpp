@@ -20,51 +20,98 @@ struct ProjectileData {
 static std::unordered_map<RE::BGSProjectile*, ProjectileData> g_originalProjectiles;
 static std::mutex g_projectilesMutex;
 
+struct ShoutData {
+    float originalRecoveryTimes[3];
+};
+static std::unordered_map<RE::TESShout*, ShoutData> g_originalShouts;
+static std::mutex g_shoutsMutex;
+
 ShoutHandler* ShoutHandler::GetSingleton() {
     static ShoutHandler singleton;
     return &singleton;
 }
 
-RE::BSEventNotifyControl ShoutHandler::ProcessEvent(const SKSE::ActionEvent* a_event, RE::BSTEventSource<SKSE::ActionEvent>*) {
-    if (!a_event) {
-        return RE::BSEventNotifyControl::kContinue;
+void ShoutHandler::StoreOriginalShoutData(RE::TESShout* shout) {
+    std::lock_guard<std::mutex> lock(g_shoutsMutex);
+    if (g_originalShouts.find(shout) == g_originalShouts.end()) {
+        ShoutData data;
+        for (int i = 0; i < 3; i++) {
+            data.originalRecoveryTimes[i] = shout->variations[i].recoveryTime;
+        }
+        g_originalShouts[shout] = data;
+    }
+}
+
+void ShoutHandler::RestoreNPCShoutValues(RE::TESShout* shout) {
+    // Restore original shout cooldowns for all variations
+    {
+        std::lock_guard<std::mutex> lock(g_shoutsMutex);
+        auto it = g_originalShouts.find(shout);
+        if (it != g_originalShouts.end()) {
+            for (int i = 0; i < 3; i++) {
+                shout->variations[i].recoveryTime = it->second.originalRecoveryTimes[i];
+            }
+        }
     }
 
-    if (a_event->type != SKSE::ActionEvent::Type::kVoiceCast &&
-        a_event->type != SKSE::ActionEvent::Type::kVoiceFire) {
-        return RE::BSEventNotifyControl::kContinue;
-    }
+    // Restore original effect and projectile values
+    for (int i = 0; i < 3; i++) {
+        auto& variation = shout->variations[i];
+        if (variation.spell) {
+            for (auto* effect : variation.spell->effects) {
+                if (effect && effect->baseEffect) {
+                    {
+                        std::lock_guard<std::mutex> lock(g_effectsMutex);
+                        auto it = g_originalEffects.find(effect);
+                        if (it != g_originalEffects.end()) {
+                            effect->effectItem.duration = it->second.originalDuration;
+                            effect->effectItem.area = it->second.originalArea;
+                            effect->effectItem.magnitude = it->second.originalMagnitude;
+                        }
+                    }
 
+                    auto* projectile = effect->baseEffect->data.projectileBase;
+                    if (projectile) {
+                        std::lock_guard<std::mutex> lock(g_projectilesMutex);
+                        auto it = g_originalProjectiles.find(projectile);
+                        if (it != g_originalProjectiles.end()) {
+                            projectile->data.speed = it->second.originalSpeed;
+                            projectile->data.range = it->second.originalRange;
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+void ShoutHandler::ApplyShoutScaling(RE::TESShout* shout, int totalSouls) {
     auto* config = Config::GetSingleton();
-    auto* player = RE::PlayerCharacter::GetSingleton();
-
-    if (!player || !a_event->actor) {
-        return RE::BSEventNotifyControl::kContinue;
-    }
-
-    if (a_event->actor->formID != player->formID) {
-        return RE::BSEventNotifyControl::kContinue;
-    }
-
-    auto* shout = a_event->sourceForm ? a_event->sourceForm->As<RE::TESShout>() : nullptr;
-    if (!shout) {
-        return RE::BSEventNotifyControl::kContinue;
-    }
-
-    int unspentSouls = static_cast<int>(player->AsActorValueOwner()->GetActorValue(RE::ActorValue::kDragonSouls));
-    int spentSouls = config->bCountSpentSouls ? CountUnlockedShoutWords(player) : 0;
-    int totalSouls = unspentSouls + spentSouls;
 
     float distanceMultiplier = CalculateDistanceMultiplier(totalSouls);
     float magnitudeMultiplier = CalculateMagnitudeMultiplier(totalSouls);
+    float cooldownMultiplier = CalculateCooldownMultiplier(totalSouls);
+
+    // Apply cooldown scaling to all variations
+    ShoutData originalShoutData;
+    {
+        std::lock_guard<std::mutex> lock(g_shoutsMutex);
+        originalShoutData = g_originalShouts[shout];
+    }
+
+    for (int i = 0; i < 3; i++) {
+        shout->variations[i].recoveryTime = originalShoutData.originalRecoveryTimes[i] * cooldownMultiplier;
+    }
 
     if (config->bEnableDebugLogging) {
-        SKSE::log::info("Player shout detected: {}", shout->GetName());
-        SKSE::log::info("  Unspent Souls: {}", unspentSouls);
-        SKSE::log::info("  Spent Souls (unlocked words): {}", spentSouls);
-        SKSE::log::info("  Total Souls: {}", totalSouls);
+        SKSE::log::info("Player shout detected: {} (FormID: {:08X})", shout->GetName(), shout->GetFormID());
         SKSE::log::info("  Distance Multiplier: {}", distanceMultiplier);
         SKSE::log::info("  Magnitude Multiplier: {}", magnitudeMultiplier);
+        SKSE::log::info("  Cooldown Multiplier: {}", cooldownMultiplier);
+        for (int i = 0; i < 3; i++) {
+            SKSE::log::info("  Variation #{} Recovery Time: {} -> {}",
+                i + 1, originalShoutData.originalRecoveryTimes[i], shout->variations[i].recoveryTime);
+        }
     }
 
     int effectsModified = 0;
@@ -72,8 +119,21 @@ RE::BSEventNotifyControl ShoutHandler::ProcessEvent(const SKSE::ActionEvent* a_e
     for (int i = 0; i < 3; i++) {
         auto& variation = shout->variations[i];
         if (variation.spell) {
+            if (config->bEnableDebugLogging) {
+                SKSE::log::info("  Variation #{} - Spell: {} (FormID: {:08X}), Effect count: {}",
+                    i + 1, variation.spell->GetName(), variation.spell->GetFormID(), variation.spell->effects.size());
+            }
+
             for (auto* effect : variation.spell->effects) {
                 if (effect && effect->baseEffect) {
+                    if (config->bEnableDebugLogging) {
+                        SKSE::log::info("    Effect: {} (FormID: {:08X}), Archetype: {:08X}",
+                            effect->baseEffect->GetName(),
+                            effect->baseEffect->GetFormID(),
+                            static_cast<std::uint32_t>(effect->baseEffect->GetArchetype()));
+                    }
+
+                    // Store original effect values
                     {
                         std::lock_guard<std::mutex> lock(g_effectsMutex);
                         if (g_originalEffects.find(effect) == g_originalEffects.end()) {
@@ -91,11 +151,10 @@ RE::BSEventNotifyControl ShoutHandler::ProcessEvent(const SKSE::ActionEvent* a_e
                         original = g_originalEffects[effect];
                     }
 
+                    // Apply magnitude scaling (inverted for SlowTime)
                     bool isSlowTime = effect->baseEffect->HasArchetype(RE::EffectArchetypes::ArchetypeID::kSlowTime);
-
                     if (isSlowTime) {
                         float slowedMagnitude = original.originalMagnitude / magnitudeMultiplier;
-
                         constexpr float MIN_TIME_SCALE = 0.05f;
                         effect->effectItem.magnitude = std::max(slowedMagnitude, MIN_TIME_SCALE);
                     } else {
@@ -104,6 +163,7 @@ RE::BSEventNotifyControl ShoutHandler::ProcessEvent(const SKSE::ActionEvent* a_e
 
                     effectsModified++;
 
+                    // Apply projectile scaling
                     auto* projectile = effect->baseEffect->data.projectileBase;
                     if (projectile) {
                         {
@@ -123,7 +183,7 @@ RE::BSEventNotifyControl ShoutHandler::ProcessEvent(const SKSE::ActionEvent* a_e
                         }
                         projectile->data.speed = origProj.originalSpeed * distanceMultiplier;
                         projectile->data.range = origProj.originalRange * distanceMultiplier;
-                        
+
                         if (config->bEnableDebugLogging) {
                             SKSE::log::info("  Effect #{}: mag {} -> {}, proj speed {} -> {}, range {} -> {} {}",
                                 i + 1,
@@ -148,6 +208,52 @@ RE::BSEventNotifyControl ShoutHandler::ProcessEvent(const SKSE::ActionEvent* a_e
     if (config->bEnableDebugLogging) {
         SKSE::log::info("  Total effects modified: {}", effectsModified);
     }
+}
+
+RE::BSEventNotifyControl ShoutHandler::ProcessEvent(const SKSE::ActionEvent* a_event, RE::BSTEventSource<SKSE::ActionEvent>*) {
+    if (!a_event) {
+        return RE::BSEventNotifyControl::kContinue;
+    }
+
+    if (a_event->type != SKSE::ActionEvent::Type::kVoiceCast &&
+        a_event->type != SKSE::ActionEvent::Type::kVoiceFire) {
+        return RE::BSEventNotifyControl::kContinue;
+    }
+
+    auto* config = Config::GetSingleton();
+    auto* player = RE::PlayerCharacter::GetSingleton();
+
+    if (!player || !a_event->actor) {
+        return RE::BSEventNotifyControl::kContinue;
+    }
+
+    auto* shout = a_event->sourceForm ? a_event->sourceForm->As<RE::TESShout>() : nullptr;
+    if (!shout) {
+        return RE::BSEventNotifyControl::kContinue;
+    }
+
+    // Store original shout data on first encounter
+    StoreOriginalShoutData(shout);
+
+    // If an NPC is casting, restore original values to prevent NPCs from using buffed shouts
+    if (a_event->actor->formID != player->formID) {
+        RestoreNPCShoutValues(shout);
+        return RE::BSEventNotifyControl::kContinue;
+    }
+
+    // Calculate total souls for scaling
+    int unspentSouls = static_cast<int>(player->AsActorValueOwner()->GetActorValue(RE::ActorValue::kDragonSouls));
+    int spentSouls = config->bCountSpentSouls ? CountUnlockedShoutWords(player) : 0;
+    int totalSouls = unspentSouls + spentSouls;
+
+    if (config->bEnableDebugLogging) {
+        SKSE::log::info("  Unspent Souls: {}", unspentSouls);
+        SKSE::log::info("  Spent Souls (unlocked words): {}", spentSouls);
+        SKSE::log::info("  Total Souls: {}", totalSouls);
+    }
+
+    // Apply scaling to player's shout
+    ApplyShoutScaling(shout, totalSouls);
 
     return RE::BSEventNotifyControl::kContinue;
 }
@@ -168,6 +274,22 @@ float ShoutHandler::CalculateMagnitudeMultiplier(int dragonSouls) {
     int clampedSouls = std::min(dragonSouls, config->iMaxDragonSouls);
 
     float multiplier = config->fMinMagnitudeMultiplier + (static_cast<float>(clampedSouls) * config->fMagnitudeMultiplier);
+
+    return multiplier;
+}
+
+float ShoutHandler::CalculateCooldownMultiplier(int dragonSouls) {
+    auto* config = Config::GetSingleton();
+
+    int clampedSouls = std::min(dragonSouls, config->iMaxDragonSouls);
+
+    // Cooldown reduction: higher souls = lower cooldown
+    // Formula: 1.0 - (souls * reduction) = cooldown multiplier
+    // Example: 1.0 - (50 * 0.01) = 0.5 (50% of original cooldown)
+    float multiplier = 1.0f - (static_cast<float>(clampedSouls) * config->fCooldownReduction);
+
+    // Clamp to minimum cooldown multiplier
+    multiplier = std::max(multiplier, config->fMinCooldownMultiplier);
 
     return multiplier;
 }

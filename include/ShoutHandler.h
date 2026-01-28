@@ -9,10 +9,6 @@ public:
 
     RE::BSEventNotifyControl ProcessEvent(const SKSE::ActionEvent* a_event, RE::BSTEventSource<SKSE::ActionEvent>*) override;
 
-    float CalculateDistanceMultiplier(int dragonSouls);
-    float CalculateMagnitudeMultiplier(int dragonSouls);
-    int CountUnlockedShoutWords(RE::PlayerCharacter* player);
-
 private:
     ShoutHandler() = default;
     ShoutHandler(const ShoutHandler&) = delete;
@@ -21,6 +17,16 @@ private:
 
     ShoutHandler& operator=(const ShoutHandler&) = delete;
     ShoutHandler& operator=(ShoutHandler&&) = delete;
+
+    // Helper methods
+    void StoreOriginalShoutData(RE::TESShout* shout);
+    void RestoreNPCShoutValues(RE::TESShout* shout);
+    void ApplyShoutScaling(RE::TESShout* shout, int totalSouls);
+
+    float CalculateDistanceMultiplier(int dragonSouls);
+    float CalculateMagnitudeMultiplier(int dragonSouls);
+    float CalculateCooldownMultiplier(int dragonSouls);
+    int CountUnlockedShoutWords(RE::PlayerCharacter* player);
 };
 
 

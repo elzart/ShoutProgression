@@ -44,21 +44,25 @@ void Config::LoadFromINI() {
 
     fDistanceMultiplier = static_cast<float>(ini.GetDoubleValue("ShoutProgression", "fDistanceMultiplier", fDistanceMultiplier));
     fMagnitudeMultiplier = static_cast<float>(ini.GetDoubleValue("ShoutProgression", "fMagnitudeMultiplier", fMagnitudeMultiplier));
+    fCooldownReduction = static_cast<float>(ini.GetDoubleValue("ShoutProgression", "fCooldownReduction", fCooldownReduction));
     iMaxDragonSouls = static_cast<int>(ini.GetLongValue("ShoutProgression", "iMaxDragonSouls", iMaxDragonSouls));
     bCountSpentSouls = ini.GetBoolValue("ShoutProgression", "bCountSpentSouls", bCountSpentSouls);
 
     fMinDistanceMultiplier = static_cast<float>(ini.GetDoubleValue("ShoutProgression", "fMinDistanceMultiplier", fMinDistanceMultiplier));
     fMinMagnitudeMultiplier = static_cast<float>(ini.GetDoubleValue("ShoutProgression", "fMinMagnitudeMultiplier", fMinMagnitudeMultiplier));
+    fMinCooldownMultiplier = static_cast<float>(ini.GetDoubleValue("ShoutProgression", "fMinCooldownMultiplier", fMinCooldownMultiplier));
 
     bEnableDebugLogging = ini.GetBoolValue("General", "bEnableDebugLogging", bEnableDebugLogging);
 
     SKSE::log::info("Configuration loaded:");
     SKSE::log::info("  fDistanceMultiplier: {}", fDistanceMultiplier);
     SKSE::log::info("  fMagnitudeMultiplier: {}", fMagnitudeMultiplier);
+    SKSE::log::info("  fCooldownReduction: {}", fCooldownReduction);
     SKSE::log::info("  iMaxDragonSouls: {}", iMaxDragonSouls);
     SKSE::log::info("  bCountSpentSouls: {}", bCountSpentSouls);
     SKSE::log::info("  fMinDistanceMultiplier: {}", fMinDistanceMultiplier);
     SKSE::log::info("  fMinMagnitudeMultiplier: {}", fMinMagnitudeMultiplier);
+    SKSE::log::info("  fMinCooldownMultiplier: {}", fMinCooldownMultiplier);
     SKSE::log::info("  bEnableDebugLogging: {}", bEnableDebugLogging);
 }
 
